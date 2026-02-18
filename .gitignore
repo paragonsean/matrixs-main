@@ -1,0 +1,31 @@
+.DS_Store
+*.user
+*.pro
+
+# Build artifacts
+CMakeCache.txt
+CMakeFiles/
+CTestTestfile.cmake
+Makefile
+cmake_install.cmake
+*.o
+*.d
+
+# Executables
+main
+matrix_solver
+pnmatrix_test
+
+# Large data files
+*.mat
+*.mtx
+mat_*.txt
+*_solution*.txt
+
+# Temporary files
+*.txtmodified.txt
+*.txt.txt
+out.txt
+benchmark_results*.txt
+bench*.md
+googletest-src/

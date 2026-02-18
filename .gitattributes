@@ -1,0 +1,6 @@
+Amidterm1.txtmodified.txt filter=lfs diff=lfs merge=lfs -text
+Amidterm2.txtmodified.txt filter=lfs diff=lfs merge=lfs -text
+Amidterm3.txtmodified.txt filter=lfs diff=lfs merge=lfs -text
+Amidterm5.txtmodified.txt filter=lfs diff=lfs merge=lfs -text
+Aproblem_1_alt.txtmodified.txt filter=lfs diff=lfs merge=lfs -text
+examples/matdatas.txt filter=lfs diff=lfs merge=lfs -text
