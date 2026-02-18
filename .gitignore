@@ -14,13 +14,17 @@ cmake_install.cmake
 # Executables
 main
 matrix_solver
-pnmatrix_test
+pnmatrix_example
+generate_matrix
+thread_pool_test
+benchmark_example
 
 # Large data files
 *.mat
 *.mtx
 mat_*.txt
 *_solution*.txt
+examples/data/*.txt
 
 # Temporary files
 *.txtmodified.txt
@@ -28,4 +32,9 @@ mat_*.txt
 out.txt
 benchmark_results*.txt
 bench*.md
+
+# External dependencies
+googletest-src/
+googletest-download/
+googletest-build/
 googletest-src/
