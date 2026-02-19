@@ -1,3 +1,24 @@
+/**
+ * @file matrix_solver.h
+ * @brief High-performance matrix solver utilities with thread pool optimization
+ * 
+ * This header provides optimized implementations for matrix generation,
+ * solving linear systems, and performance benchmarking. It includes:
+ * 
+ * - Thread pool for parallel matrix operations
+ * - Optimized matrix generation with diagonal dominance
+ * - Multi-threaded solver testing framework
+ * - Performance timing and benchmarking utilities
+ * - File I/O operations for matrix data
+ * 
+ * Features:
+ * - Parallel matrix generation using thread pool
+ * - Memory-mapped file operations for large matrices
+ * - High-resolution timing for performance analysis
+ * - Template-based design for different matrix storage types
+ * - Thread-safe operations for concurrent execution
+ */
+
 #pragma once
 
 #include <string>
@@ -22,9 +43,37 @@
 
 namespace pnmatrix {
 
-// ThreadPool class remains unchanged
+/**
+ * @brief High-performance thread pool for parallel matrix operations
+ * 
+ * Implements a work-stealing thread pool with task queue and condition
+ * variable synchronization. This provides efficient parallel execution
+ * for matrix operations that can be divided into independent tasks.
+ * 
+ * Features:
+ * - Configurable number of worker threads
+ * - Task queue with FIFO scheduling
+ * - Future-based result retrieval
+ * - Graceful shutdown with join semantics
+ * 
+ * Usage:
+ * ```cpp
+ * ThreadPool pool(4);  // 4 worker threads
+ * auto future = pool.enqueue(function, args...);
+ * auto result = future.get();  // Wait for completion
+ * ```
+ */
 class ThreadPool {
 public:
+    /**
+     * @brief Construct thread pool with specified number of worker threads
+     * 
+     * Creates worker threads that continuously pull tasks from the queue
+     * and execute them. Threads are started immediately and wait for
+     * tasks using condition variables for efficient CPU usage.
+     * 
+     * @param numThreads Number of worker threads to create
+     */
     explicit ThreadPool(size_t numThreads) {
         for (size_t i = 0; i < numThreads; ++i) {
             workers_.emplace_back([this]() {
@@ -40,12 +89,26 @@ public:
                         tasks_.pop();
                     }
 
-                    task();
+                    task();  // Execute the task
                 }
             });
         }
     }
 
+    /**
+     * @brief Enqueue a task for execution by the thread pool
+     * 
+     * Adds a function with its arguments to the task queue and returns
+     * a future for retrieving the result. Uses perfect forwarding
+     * to avoid unnecessary copies and supports any callable type.
+     * 
+     * @tparam F Function type to execute
+     * @tparam Args Argument types for the function
+     * @param f Function to execute
+     * @param args Arguments to pass to the function
+     * @return std::future for the function's return value
+     * @throws std::runtime_error if enqueue is called on stopped pool
+     */
     template <class F, class... Args>
     auto enqueue(F&& f, Args&&... args) -> std::future<typename std::invoke_result<F, Args...>::type> {
         using returnType = typename std::invoke_result<F, Args...>::type;
@@ -65,6 +128,13 @@ public:
         return res;
     }
 
+    /**
+     * @brief Destructor - gracefully shuts down the thread pool
+     * 
+     * Signals all worker threads to stop, waits for them to complete
+     * current tasks, and then joins all threads. This ensures clean
+     * shutdown without resource leaks.
+     */
     ~ThreadPool() {
         {
             std::unique_lock<std::mutex> lock(queueMutex_);
@@ -76,19 +146,26 @@ public:
     }
 
 private:
-    std::vector<std::thread> workers_;
-    std::queue<std::function<void()>> tasks_;
-
-    std::mutex queueMutex_;
-    std::condition_variable condition_;
-    bool stop_ = false;
+    std::vector<std::thread> workers_;           ///< Worker threads
+    std::queue<std::function<void()>> tasks_;      ///< Task queue
+    std::mutex queueMutex_;                       ///< Mutex for task queue access
+    std::condition_variable condition_;           ///< Condition variable for task availability
+    bool stop_ = false;                            ///< Flag to signal thread shutdown
 };
 
-// Alias types for dense and sparse matrices
+// Type aliases for commonly used matrix types
 using DenseMatrix = matrix<dense_matrix_storage<double>>;
 using SparseMatrix = matrix<sparse_matrix_storage<double>>;
 
-// Function to print a matrix
+/**
+ * @brief Print matrix contents with coordinate information
+ * 
+ * Outputs matrix elements in coordinate format showing row and column
+ * indices along with values. Useful for debugging and visualization.
+ * 
+ * @tparam MatrixType Matrix type (must provide iterator interface)
+ * @param m Matrix to print
+ */
 template <typename MatrixType>
 void print_matrix(const MatrixType& m) {
     for (auto row = m.begin(); row != m.end(); ++row) {
@@ -99,20 +176,41 @@ void print_matrix(const MatrixType& m) {
     }
 }
 
-// Optimized multi-threaded row generator for DenseMatrix
+/**
+ * @brief Optimized multi-threaded row generator for dense matrices
+ * 
+ * Generates rows of a diagonally dominant matrix in parallel.
+ * Each thread works on a contiguous range of rows to minimize
+ * cache contention and maximize performance.
+ * 
+ * Algorithm ensures diagonal dominance: A[i,i] > sum(|A[i,j]| for j ≠ i)
+ * 
+ * @param A Output matrix being generated (modified in place)
+ * @param x Known solution vector for computing RHS
+ * @param b Output RHS vector (modified in place)
+ * @param startRow Starting row index for this thread
+ * @param endRow Ending row index (exclusive) for this thread
+ * @param gen Random number generator for this thread
+ * @param ndist Normal distribution for random values
+ */
 inline void generateRows(DenseMatrix& A, const DenseMatrix& x, DenseMatrix& b,
                         int startRow, int endRow, std::mt19937& gen, std::normal_distribution<double>& ndist) {
     int n = static_cast<int>(A.get_row());
 
     for (int i = startRow; i < endRow; ++i) {
         double s = 0.0;
+        
+        // Generate random off-diagonal elements
         for (int j = 0; j < n; ++j) {
             double r = ndist(gen);
             s += std::abs(r);
             A.set_value(i, j, r);
         }
-        A.set_value(i, i, s); // Ensure diagonal dominance
+        
+        // Ensure diagonal dominance
+        A.set_value(i, i, s);
 
+        // Compute RHS: b[i] = sum(A[i,j] * x[j])
         double sum = 0.0;
         for (int j = 0; j < n; ++j) {
             sum += A.get_value(i, j) * x.get_value(j, 0);
@@ -121,7 +219,16 @@ inline void generateRows(DenseMatrix& A, const DenseMatrix& x, DenseMatrix& b,
     }
 }
 
-// Function to initialize matrix x
+/**
+ * @brief Initialize solution vector with sequential values
+ * 
+ * Creates a vector x = [1, 2, 3, ..., n] which serves as the known
+ * solution for testing solver accuracy. This allows verification
+ * that solvers find the correct solution.
+ * 
+ * @param x Output vector to initialize
+ * @param n Size of the vector
+ */
 void initializeVector(DenseMatrix& x, int n) {
     DenseMatrix mat(n, 1);
     for (int i = 0; i < n; ++i) {
@@ -130,13 +237,28 @@ void initializeVector(DenseMatrix& x, int n) {
     x.set_column(0, mat);
 }
 
-// Optimized function to generate random matrix
+/**
+ * @brief Generate random diagonally dominant matrix using thread pool
+ * 
+ * Creates a test matrix system suitable for iterative solver testing.
+ * Uses thread pool for parallel row generation to maximize performance
+ * on multi-core systems. Each thread gets its own random generator
+ * to avoid contention.
+ * 
+ * @param A Output coefficient matrix
+ * @param x Output known solution vector
+ * @param b Output RHS vector
+ * @param n Matrix dimension
+ * @param rd Random device for seed generation
+ */
 void generateRandomMatrix(DenseMatrix& A, DenseMatrix& x, DenseMatrix& b, int n, std::random_device& rd) {
     initializeVector(x, n);
 
+    // Determine optimal thread count based on hardware
     unsigned numThreads = std::max(1u, std::thread::hardware_concurrency());
     ThreadPool pool(numThreads);
 
+    // Calculate workload distribution
     int rowsPerThread = n / numThreads;
     int remainder = n % numThreads;
 
@@ -151,21 +273,33 @@ void generateRandomMatrix(DenseMatrix& A, DenseMatrix& x, DenseMatrix& b, int n,
 
     std::normal_distribution<double> ndist(0.0, 50.0);
 
+    // Distribute work among threads
     for (unsigned t = 0; t < numThreads; ++t) {
         int startRow = t * rowsPerThread + std::min(static_cast<int>(t), remainder);
         int endRow = startRow + rowsPerThread + (t < remainder ? 1 : 0);
 
-        // Capture by reference except for generator and distribution
+        // Enqueue task for thread pool execution
         futures.emplace_back(pool.enqueue(generateRows, std::ref(A), std::ref(x), std::ref(b),
                                         startRow, endRow, std::ref(generators[t]), std::ref(ndist)));
     }
 
+    // Wait for all threads to complete
     for (auto& fut : futures) {
         fut.get();
     }
 }
 
-// Random matrix generator for DenseMatrix with optimized file writing
+/**
+ * @brief Generate random matrix and write to file with performance timing
+ * 
+ * Creates a diagonally dominant matrix system and saves it to file
+ * using binary format for efficient I/O. Provides timing information
+ * for both generation and file writing operations.
+ * 
+ * @param filename Output file path
+ * @param n Matrix dimension
+ * @param writeTime Accumulated write time (output parameter)
+ */
 void generateRandomMatrixAndWriteToFile(const std::string& filename, int n, double& writeTime) {
     auto start = std::chrono::high_resolution_clock::now();
 
@@ -191,7 +325,25 @@ void generateRandomMatrixAndWriteToFile(const std::string& filename, int n, doub
     writeTime += std::chrono::duration<double>(writeEnd - start).count();
 }
 
-// Test matrix generation and solving system Ax = b using Gauss-Seidel
+/**
+ * @brief Comprehensive test for matrix generation and solver performance
+ * 
+ * This function performs end-to-end testing of the matrix generation,
+ * file I/O, and solver performance. It measures timing for each phase
+ * and provides detailed performance analysis.
+ * 
+ * Test phases:
+ * 1. Matrix generation and file writing
+ * 2. Matrix loading from file
+ * 3. Solver execution (Gauss-Seidel)
+ * 4. Solution validation (optional)
+ * 
+ * @tparam MatrixType Matrix storage type (dense or sparse)
+ * @param filename File path for matrix data
+ * @param matrixType Description string for output
+ * @param printSolution Whether to print the solution vector
+ * @param size Matrix dimension
+ */
 template <typename MatrixType>
 void testMatrixGenerationAndSolve(const std::string& filename, const std::string& matrixType, bool printSolution, int size) {
     try {
@@ -204,19 +356,23 @@ void testMatrixGenerationAndSolve(const std::string& filename, const std::string
 
         double writeTime = 0.0;
         auto genStart = std::chrono::high_resolution_clock::now();
-        // Generate and write matrices A and b
+        
+        // Phase 1: Matrix generation and file writing
         generateRandomMatrixAndWriteToFile(filename, size, writeTime);
+        
         auto genEnd = std::chrono::high_resolution_clock::now();
         std::cout << matrixType << " Matrix Generation and Writing Time: "
                   << std::chrono::duration<double>(genEnd - genStart).count() << " seconds.\n";
         std::cout << "File Writing Time: " << (std::chrono::duration<double>(genEnd - genStart).count()) << " seconds.\n";
 
+        // Phase 2: Matrix loading from file
         auto loadStart = std::chrono::high_resolution_clock::now();
         fileHandler.loadBinaryAB(A, b, filename);
         auto loadEnd = std::chrono::high_resolution_clock::now();
         std::cout << "Matrix Load Time: "
                   << std::chrono::duration<double>(loadEnd - loadStart).count() << " seconds.\n";
 
+        // Phase 3: Solver execution
         gauss_seidel::option op;
         op.rm = 1e-6;
         gauss_seidel solver(op);
