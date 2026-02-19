@@ -1,0 +1,25 @@
+Matrix Solver Performance Report
+================================
+
+SOLVER COMPARISON SUMMARY
+-------------------------
+Gauss-Seidel:
+  Mean Time: 11.699s
+  Std Dev: 9.819s
+  Min Time: 0.089s
+  Max Time: 31.754s
+  95% CI: [7.163s, 16.235s]
+  Coeff. of Variation: 83.93%
+
+Gaussian Elimination:
+  Mean Time: 40.552s
+  Std Dev: 41.789s
+  Min Time: 0.079s
+  Max Time: 136.567s
+  95% CI: [21.246s, 59.857s]
+  Coeff. of Variation: 103.05%
+
+PERFORMANCE RANKING (Fastest to Slowest)
+-----------------------------------
+1. Gauss-Seidel - 11.699s
+2. Gaussian Elimination - 40.552s

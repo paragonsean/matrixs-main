@@ -1,0 +1,154 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Matrix Solver Performance Report</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background-color: #f5f5f5; }
+        .container { max-width: 1200px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        h1 { color: #333; text-align: center; margin-bottom: 30px; }
+        h2 { color: #555; border-bottom: 2px solid #ddd; padding-bottom: 10px; }
+        table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+        th { background-color: #f8f9fa; font-weight: bold; }
+        tr:nth-child(even) { background-color: #f8f9fa; }
+        .metric { text-align: right; font-family: 'Courier New', monospace; }
+        .fastest { background-color: #d4edda !important; }
+        .slowest { background-color: #f8d7da !important; }
+        .chart-container { margin: 20px 0; padding: 20px; border: 1px solid #ddd; border-radius: 4px; }
+        .summary-box { background: #e9ecef; padding: 15px; border-radius: 4px; margin: 10px 0; }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>Matrix Solver Performance Report</h1>
+<h2>Performance Summary</h2>
+<table>
+<tr><th>Solver</th><th>Avg Total Time</th><th>Std Dev</th><th>Min Time</th><th>Max Time</th><th>95% CI</th><th>CV</th></tr>
+<tr class="fastest">
+<td>Gauss-Seidel</td>
+<td class="metric">11.699s</td>
+<td class="metric">9.819s</td>
+<td class="metric">0.089s</td>
+<td class="metric">31.754s</td>
+<td class="metric">[7.163s, 16.235s]</td>
+<td class="metric">83.93%</td>
+</tr>
+<tr class="slowest">
+<td>Gaussian Elimination</td>
+<td class="metric">40.552s</td>
+<td class="metric">41.789s</td>
+<td class="metric">0.079s</td>
+<td class="metric">136.567s</td>
+<td class="metric">[21.246s, 59.857s]</td>
+<td class="metric">103.05%</td>
+</tr>
+</table>
+<h2>Performance Charts</h2>
+<div class="chart-container">
+<h3>Solver Performance Comparison</h3>
+<canvas id="performanceChart" width="400" height="200"></canvas>
+</div>
+<div class="chart-container">
+<h3>Scalability Analysis</h3>
+<canvas id="scalabilityChart" width="400" height="200"></canvas>
+</div>
+<script>
+const performanceCtx = document.getElementById('performanceChart').getContext('2d');
+const performanceChart = new Chart(performanceCtx, {
+    type: 'bar',
+    data: {
+        labels: ['Gauss-Seidel', 'Gaussian Elimination'],
+        datasets: [{
+            label: 'Average Total Time (s)',
+            data: [11.6992, 40.5518],
+            backgroundColor: 'rgba(54, 162, 235, 0.8)',
+            borderColor: 'rgba(54, 162, 235, 1)',
+            borderWidth: 1
+        }]
+    },
+    options: {
+        responsive: true,
+        scales: {
+            y: {
+                beginAtZero: true,
+                title: {
+                    display: true,
+                    text: 'Time (seconds)'
+                }
+            }
+        }
+    }
+});
+const scalabilityCtx = document.getElementById('scalabilityChart').getContext('2d');
+const scalabilityChart = new Chart(scalabilityCtx, {
+    type: 'line',
+    data: {
+        labels: [500, 1000, 1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000, 5500, 6000, 6500, 7000, 7500, 8000, 8500, 9000],
+        datasets: [{
+            label: 'Gauss-Seidel',
+            data: [0.089267, 0.280159, 0.668374, 1.29415, 2.3487, 4.13538, 5.53441, 9.18111, 9.02153, 10.5887, 11.6593, 13.6075, 15.842, 18.0982, 23.2282, 26.3213, 26.9337, 31.7541],
+            borderColor: 'rgba(146, 99, 132, 1)',
+            backgroundColor: 'rgba(146, 99, 132, 0.2)',
+            tension: 0.1
+        }, {
+            label: 'Gaussian Elimination',
+            data: [0.0794034, 0.349723, 1.05754, 2.19557, 4.10688, 6.70743, 9.95052, 22.1851, 22.5435, 27.7034, 32.5403, 40.568, 50.3649, 87.9251, 80.1536, 97.3114, 107.623, 136.567],
+            borderColor: 'rgba(85, 99, 132, 1)',
+            backgroundColor: 'rgba(85, 99, 132, 0.2)',
+            tension: 0.1
+        }]
+    },
+    options: {
+        responsive: true,
+        scales: {
+            y: {
+                beginAtZero: true,
+                title: {
+                    display: true,
+                    text: 'Time (seconds)'
+                }
+            },
+            x: {
+                title: {
+                    display: true,
+                    text: 'Matrix Size'
+                }
+            }
+        }
+    }
+});
+</script>
+<h2>Performance Analysis</h2>
+<div class="summary-box">
+<h3>Key Findings</h3>
+<p><strong>Fastest Solver:</strong> Gauss-Seidel</p>
+<p><strong>Most Accurate:</strong> Gaussian Elimination</p>
+<p><strong>Most Consistent:</strong> Gauss-Seidel</p>
+</div>
+<div class="summary-box">
+<h3>Performance Characteristics</h3>
+<h4>Gauss-Seidel</h4>
+<ul>
+<li>Average execution time: 11.699s</li>
+<li>Standard deviation: 9.819s</li>
+<li>Performance range: 0.089s to 31.754s</li>
+<li>Consistency (CV): 83.93%</li>
+<li>95% confidence interval: [7.163s, 16.235s]</li>
+</ul>
+<h4>Gaussian Elimination</h4>
+<ul>
+<li>Average execution time: 40.552s</li>
+<li>Standard deviation: 41.789s</li>
+<li>Performance range: 0.079s to 136.567s</li>
+<li>Consistency (CV): 103.05%</li>
+<li>95% confidence interval: [21.246s, 59.857s]</li>
+</ul>
+</div>
+
+    </div>
+</body>
+</html>
